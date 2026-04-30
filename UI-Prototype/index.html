@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeneClassify Pro - V5 (Sözlük + Favoriler)</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0; background-color: var(--bg-color);
+            color: var(--text-main); display: flex; height: 100vh; overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px; background-color: #0f172a; color: white;
+            padding: 20px; display: flex; flex-direction: column; z-index: 10;
+        }
+        .sidebar h2 { color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 15px; }
+        .menu-item {
+            padding: 12px 15px; margin-bottom: 10px; background-color: #1e293b;
+            border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: 500;
+        }
+        .menu-item:hover, .menu-item.active { background-color: var(--primary-color); }
+
+        /* Main Content & Page Routing */
+        .main-content { flex: 1; overflow-y: auto; position: relative; }
+        .page-view { display: none; padding: 30px; animation: fadeIn 0.3s ease; }
+        .page-view.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Ortak Tasarımlar */
+        .card { background: var(--card-bg); border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+        .btn-back { background: white; border: 1px solid var(--border-color); padding: 8px 15px; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-weight: 600; color: var(--text-main); transition: 0.2s;}
+        .btn-back:hover { background: #f1f5f9; }
+
+        /* ---- TABLO VE FİLTRE ---- */
+        .filter-panel { display: flex; gap: 15px; margin-bottom: 25px; }
+        .filter-input { flex: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 15px; border-bottom: 1px solid var(--border-color); }
+        tr.clickable-row { cursor: pointer; transition: 0.2s; }
+        tr.clickable-row:hover { background-color: #f1f5f9; }
+        
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge-ad { background: #fee2e2; color: #991b1b; } 
+        .badge-ar { background: #e0e7ff; color: #3730a3; } 
+        .badge-xl { background: #fef3c7; color: #92400e; }
+        .badge-type { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+        /* YENİ: Favori Yıldızı CSS'i */
+        .star-btn { color: #cbd5e1; font-size: 1.4rem; cursor: pointer; transition: 0.2s; }
+        .star-btn:hover { transform: scale(1.2); }
+        .star-btn.active { color: #f59e0b; }
+
+        /* ---- SAĞLIKLI GENETİK (EĞİTİM) ---- */
+        .edu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .edu-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .edu-img-placeholder { width: 100%; height: 200px; border-radius: 8px; background: linear-gradient(45deg, #38bdf8, #2563eb); margin-bottom: 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem; font-weight: bold;}
+        .edu-card h3 { color: var(--primary-color); margin-bottom: 5px; }
+        .edu-card p { color: var(--text-light); font-size: 0.95rem; line-height: 1.5; }
+
+        /* ---- SÖZLÜK SAYFASI TASARIMI ---- */
+        .dict-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .dict-item { background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-color); }
+
+        /* ---- HASTALIK DETAYI ---- */
+        .detail-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 20px; }
+        .detail-title { margin: 0; font-size: 2rem; color: var(--primary-color); }
+        .detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+        .info-group { margin-bottom: 20px; }
+        .info-label { font-size: 0.85rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 5px; }
+        .info-value { font-size: 1.1rem; font-weight: 500; }
+        .visual-box { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; height: 350px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--text-light); }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <h2>GeneClassify Pro</h2>
+        <div class="menu-item active" id="nav-db" onclick="navigate('db')">🧬 Veritabanı</div>
+        <div class="menu-item" id="nav-fav" onclick="navigate('fav')">⭐ Favorilerim</div>
+        <div class="menu-item" id="nav-edu" onclick="navigate('edu')">👤 Sağlıklı İnsan Genetiği</div>
+        <div class="menu-item" id="nav-dict" onclick="navigate('dict')">📖 Genetik Sözlüğü</div>
+        <div class="menu-item">⚙️ Ayarlar</div>
+    </aside>
+
+    <main class="main-content">
+        
+        <div id="page-db" class="page-view active">
+            <div class="card">
+                <div class="filter-panel">
+                    <input type="text" id="searchInput" class="filter-input" placeholder="Hastalık, Gen (Örn: CFTR) ara..." oninput="filterData()">
+                    
+                    <select id="turFilter" class="filter-input" onchange="filterData()">
+                        <option value="">Tüm Hastalık Türleri</option>
+                        <option value="Monogenik">Monogenik (Tek Gen)</option>
+                        <option value="Kromozomal">Kromozomal</option>
+                        <option value="Multifaktöriyel">Multifaktöriyel</option>
+                    </select>
+
+                    <select id="kalitimFilter" class="filter-input" onchange="filterData()">
+                        <option value="">Tüm Kalıtım Modelleri</option>
+                        <option value="AD">Otozomal Dominant</option>
+                        <option value="AR">Otozomal Resesif</option>
+                        <option value="XL">X'e Bağlı</option>
+                    </select>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="40"></th> <th>Hastalık Adı</th>
+                            <th>Hastalık Türü</th>
+                            <th>İlgili Gen / Bölge</th>
+                            <th>Kalıtım Modeli</th>
+                        </tr>
+                    </thead>
+                    <tbody id="veriTablosu"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="page-fav" class="page-view">
+            <h1 style="color: #f59e0b; margin-top:0;">⭐ Koleksiyonum (Favoriler)</h1>
+            <p style="color: var(--text-light);"></p>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="40"></th>
+                            <th>Hastalık Adı</th>
+                            <th>Hastalık Türü</th>
+                            <th>İlgili Gen / Bölge</th>
+                            <th>Kalıtım Modeli</th>
+                        </tr>
+                    </thead>
+                    <tbody id="favTablosu"></tbody>
+                </table>
+                <div id="bosFavoriUyari" style="text-align:center; padding:30px; color:var(--text-light);">
+                    Henüz hiçbir hastalığı favorilerinize eklemediniz.
+                </div>
+            </div>
+        </div>
+
+        <div id="page-edu" class="page-view">
+            <h1 style="color: var(--primary-color); margin-top:0;">Sağlıklı İnsan Genetiği</h1>
+            <p style="color: var(--text-light); margin-bottom: 30px; font-size: 1.1rem;">Genetik hastalıkları anlamadan önce, sağlıklı bir hücrenin nasıl çalıştığını inceleyelim.</p>
+            
+            <div class="edu-grid">
+                <div class="card edu-card">
+                    <div class="edu-img-placeholder" style="background: linear-gradient(45deg, #10b981, #059669);">Hücre & Çekirdek</div>
+                    <h3>1. İnsan Hücresi</h3>
+                    <p>İnsan vücudu trilyonlarca hücreden oluşur. Neredeyse her hücrenin merkezinde, genetik materyalimizi koruyan bir <b>Çekirdek (Nukleus)</b> bulunur.</p>
+                </div>
+                <div class="card edu-card">
+                    <div class="edu-img-placeholder" style="background: linear-gradient(45deg, #f59e0b, #d97706);">Kromozomlar (46)</div>
+                    <h3>2. Karyotip (Kromozomlar)</h3>
+                    <p>Sağlıklı bir insanda 23 çift olmak üzere toplam <b>46 kromozom</b> bulunur. 23'ü anneden, 23'ü babadan gelir. Bunlar DNA'nın sıkıştırılmış paketleridir.</p>
+                </div>
+                <div class="card edu-card">
+                    <div class="edu-img-placeholder" style="background: linear-gradient(45deg, #8b5cf6, #6d28d9);">DNA Sarmalı</div>
+                    <h3>3. DNA (Deoksiribonükleik Asit)</h3>
+                    <p>Yaşamın kaynak kodudur. A, T, G ve C bazlarından oluşan çift sarmallı bir merdiven yapısındadır. Tüm biyolojik şifremiz buradadır.</p>
+                </div>
+                <div class="card edu-card">
+                    <div class="edu-img-placeholder" style="background: linear-gradient(45deg, #ec4899, #be185d);">Gen Bölgesi</div>
+                    <h3>4. Genler</h3>
+                    <p>DNA üzerindeki anlamlı şifre parçalarıdır. Her gen, vücudumuzda belirli bir proteinin üretilmesi için talimatlar (kodlar) içerir.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-dict" class="page-view">
+            <h1 style="color: var(--primary-color); margin-top:0;">📖 Genetik Sözlüğü</h1>
+            <p style="color: var(--text-light); margin-bottom: 30px;">
+                Tıbbi literatürde geçen kalıtım modellerinin ve genetik mutasyon türlerinin açıklamalarını aşağıdan inceleyebilirsiniz:
+            </p>
+            <div class="dict-grid" id="sozlukAlani">
+                </div>
+        </div>
+
+        <div id="page-detail" class="page-view">
+            <button class="btn-back" onclick="navigate('db')">← Veritabanına Dön</button>
+            <div class="card">
+                <div class="detail-header">
+                    <div>
+                        <h1 id="d-title" class="detail-title">Hastalık Adı</h1>
+                        <p style="color: var(--text-light); margin: 5px 0 10px 0;">Veri Kaynağı: <span id="d-kaynak" style="font-weight:bold;">OMIM</span></p>
+                        <span id="d-tur" class="badge badge-type">Monogenik</span>
+                    </div>
+                    <span id="d-badge" class="badge">Kalıtım</span>
+                </div>
+
+                <div class="detail-grid">
+                    <div>
+                        <div class="info-group">
+                            <span class="info-label">Klinik Semtomlar & Tanım</span>
+                            <div id="d-detay" class="info-value" style="font-weight: normal; line-height: 1.6;">Açıklama metni.</div>
+                        </div>
+                        
+                        <div class="info-group" style="background: #f1f5f9; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                            <span class="info-label" style="color: var(--primary-color);">Etkilenen Mekanizma / Sistem</span>
+                            <div id="d-mekanizma" class="info-value">Solunum ve Sindirim Sistemi</div>
+                        </div>
+
+                        <div style="display: flex; gap: 40px; margin-top: 20px;">
+                            <div class="info-group">
+                                <span class="info-label">İlgili Gen</span>
+                                <div class="info-value"><code id="d-gen" style="background:#e2e8f0; padding:4px 8px; border-radius:6px;">GEN</code></div>
+                            </div>
+                            <div class="info-group">
+                                <span class="info-label">Mutasyon Tipi</span>
+                                <div id="d-mutasyon" class="info-value">Missense</div>
+                            </div>
+                            <div class="info-group">
+                                <span class="info-label">Kromozom Lokasyonu</span>
+                                <div id="d-lokasyon" class="info-value">7q31.2</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="visual-box">
+                        <span style="font-size: 40px; margin-bottom:10px;">🧬</span>
+                        <h3 style="margin:0; color:#475569;">Görselleştirme Alanı</h3>
+                        <p style="text-align:center; font-size:13px; padding:0 20px;">İlerleyen aşamalarda bu alana <b id="d-gen-visual"></b> genindeki mutasyonu gösteren 3D protein modeli veya etkilenen kromozom eklenecektir.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // SÖZLÜK VERİLERİ (Sözlük sayfasını doldurmak için)
+        const sozluk = {
+            "Frameshift": "Çerçeve Kayması: DNA'ya baz eklenmesi/çıkmasıyla kod okuma düzeninin tamamen bozulmasıdır.",
+            "Missense": "Yanlış Anlamlı Mutasyon: Tek bir harfin değişerek yanlış bir protein üretilmesine sebep olmasıdır.",
+            "Nonsense": "Anlamsız Mutasyon: Protein üretimini aniden durduran (Dur kodonu) tehlikeli bir mutasyondur.",
+            "Otozomal Dominant": "Hastalığın ortaya çıkması için tek bir hastalıklı gen kopyasının (anneden veya babadan) yeterli olmasıdır.",
+            "Otozomal Resesif": "Hastalığın ortaya çıkması için hem anneden hem babadan hastalıklı genin gelmesi zorunluluğudur.",
+            "X'e Bağlı Resesif": "X kromozomuyla taşınır. Erkeklerde (XY) tek X olduğu için çok daha sık ve şiddetli görülür."
+        };
+
+        // VERİTABANI (2 YENİ HASTALIK EKLENDİ)
+        const database = [
+            { 
+                id: 1, 
+                ad: "Kistik Fibrozis", 
+                tur: "Monogenik", 
+                gen: "CFTR", 
+                mutasyon: "Frameshift", 
+                kalitim: "Otozomal Resesif", 
+                kod: "AR", 
+                lokasyon: "7q31.2", 
+                mekanizma: "Solunum ve Sindirim Sistemi (Klorür İyon Kanalları)", 
+                kaynak: "OMIM (#219700), HPO", 
+                detay: "CFTR genindeki mutasyonlar nedeniyle klorür iyon kanallarının bozulmasıdır. Akciğerlerde ve sindirim sisteminde koyu, yapışkan mukus birikimine yol açar." 
+            },
+            { 
+                id: 2, 
+                ad: "Marfan Sendromu", 
+                tur: "Monogenik",
+                gen: "FBN1", 
+                mutasyon: "Missense", 
+                kalitim: "Otozomal Dominant", 
+                kod: "AD", 
+                lokasyon: "15q21.1", 
+                mekanizma: "Bağ Dokusu ve İskelet Sistemi",
+                kaynak: "ClinVar (RCV00001), Orphanet", 
+                detay: "Fibrillin-1 proteini üretimini etkileyen bağ dokusu hastalığı. İskelet sistemi (uzun ekstremiteler) ve kalp-damar sistemi (aort anevrizması) riskleri yaratır." 
+            },
+            { 
+                id: 3, 
+                ad: "Hemofili A", 
+                tur: "Monogenik",
+                gen: "F8", 
+                mutasyon: "Nonsense", 
+                kalitim: "X'e Bağlı Resesif", 
+                kod: "XL", 
+                lokasyon: "Xq28", 
+                mekanizma: "Dolaşım Sistemi (Kan Pıhtılaşması)",
+                kaynak: "HGNC (3546)", 
+                detay: "Kan pıhtılaşma faktörü VIII eksikliği. X kromozomu üzerinden taşındığı için erkeklerde klinik olarak daha şiddetli kanama tabloları ile ortaya çıkar." 
+            },
+            { 
+                id: 4, 
+                ad: "Down Sendromu", 
+                tur: "Kromozomal", 
+                gen: "Tüm 21. Kromozom", 
+                mutasyon: "Trizomi (Sayısal Anomali)", 
+                kalitim: "De Novo (Kalıtsal Değil)", 
+                kod: "AD", 
+                lokasyon: "21. Kromozom", 
+                mekanizma: "Tüm Vücut Sistemleri ve Bilişsel Gelişim",
+                kaynak: "Orphanet", 
+                detay: "21. kromozom çiftinde fazladan bir kromozom (toplam 3 adet) bulunması durumuyla ortaya çıkan genetik bir farklılıktır." 
+            },
+            { 
+                id: 5, 
+                ad: "Orak Hücreli Anemi", 
+                tur: "Monogenik", 
+                gen: "HBB", 
+                mutasyon: "Missense", 
+                kalitim: "Otozomal Resesif", 
+                kod: "AR", 
+                lokasyon: "11p15.4", 
+                mekanizma: "Kan Sistemi (Hemoglobin Bozukluğu)", 
+                kaynak: "OMIM (#603903)", 
+                detay: "Kırmızı kan hücrelerinin orak şeklini almasına neden olan ve oksijen taşıma kapasitesini düşüren, ağrılı krizlerle seyreden genetik bir kan hastalığıdır." 
+            },
+            { 
+                id: 6, 
+                ad: "Turner Sendromu", 
+                tur: "Kromozomal", 
+                gen: "X Kromozomu", 
+                mutasyon: "Monozomi X (Sayısal Anomali)", 
+                kalitim: "De Novo (Kalıtsal Değil)", 
+                kod: "AD", 
+                lokasyon: "Cinsiyet Kromozomu (X)", 
+                mekanizma: "Üreme Sistemi ve Fiziksel Gelişim", 
+                kaynak: "Orphanet", 
+                detay: "Kadınlarda normalde iki tane olması gereken X kromozomlarından birinin tamamen veya kısmen eksik olması durumudur. Boy kısalığı ve üreme sorunlarına yol açar." 
+            }
+        ];
+
+        let favoriler = []; // Yıldızlanan hastalıkların ID'lerini tutar
+
+        // SAYFA YÖNLENDİRME MANTIĞI
+        function navigate(pageId) {
+            document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('page-' + pageId).classList.add('active');
+            
+            if(pageId !== 'detail') {
+                document.getElementById('nav-' + pageId).classList.add('active');
+            }
+            
+            if(pageId === 'fav') {
+                renderFavTable(); // Favoriler sekmesine geçildiğinde tabloyu tazele
+            }
+        }
+
+        // SÖZLÜK SAYFASINI ÇİZDİRME
+        function renderDictionary() {
+            const alan = document.getElementById('sozlukAlani');
+            for(let kelime in sozluk) {
+                alan.innerHTML += `
+                    <div class="dict-item">
+                        <strong style="color:var(--primary-color); display:block; margin-bottom:5px;">${kelime}</strong>
+                        <span style="font-size:14px; color:var(--text-main);">${sozluk[kelime]}</span>
+                    </div>`;
+            }
+        }
+
+        // FAVORİ EKLE/ÇIKAR FONKSİYONU
+        function toggleFav(id, event) {
+            event.stopPropagation(); // Tıklamanın satıra (detay sayfasına) gitmesini engelle
+            if(favoriler.includes(id)) {
+                favoriler = favoriler.filter(f => f !== id);
+            } else {
+                favoriler.push(id);
+            }
+            filterData(); // Ana tabloyu güncelle
+            renderFavTable(); // Favori tablosunu güncelle
+        }
+
+        // ANA TABLOYU ÇİZDİRME
+        function renderTable(data) {
+            const tbody = document.getElementById('veriTablosu');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                const isFav = favoriler.includes(item.id) ? 'active' : '';
+                const tr = document.createElement('tr');
+                tr.className = 'clickable-row';
+                tr.onclick = () => openDetail(item);
+                
+                tr.innerHTML = `
+                    <td style="text-align:center;"><span class="star-btn ${isFav}" onclick="toggleFav(${item.id}, event)">★</span></td>
+                    <td style="font-weight: bold; color: #2563eb;">${item.ad}</td>
+                    <td><span class="badge badge-type">${item.tur}</span></td>
+                    <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${item.gen}</code></td>
+                    <td><span class="badge badge-${item.kod.toLowerCase()}">${item.kalitim}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // FAVORİLER TABLOSUNU ÇİZDİRME
+        function renderFavTable() {
+            const tbody = document.getElementById('favTablosu');
+            const uyari = document.getElementById('bosFavoriUyari');
+            tbody.innerHTML = '';
+            
+            const favData = database.filter(item => favoriler.includes(item.id));
+            
+            if(favData.length === 0) {
+                uyari.style.display = 'block';
+            } else {
+                uyari.style.display = 'none';
+                favData.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'clickable-row';
+                    tr.onclick = () => openDetail(item);
+                    tr.innerHTML = `
+                        <td style="text-align:center;"><span class="star-btn active" onclick="toggleFav(${item.id}, event)">★</span></td>
+                        <td style="font-weight: bold; color: #2563eb;">${item.ad}</td>
+                        <td><span class="badge badge-type">${item.tur}</span></td>
+                        <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px;">${item.gen}</code></td>
+                        <td><span class="badge badge-${item.kod.toLowerCase()}">${item.kalitim}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        // DETAY SAYFASINI AÇMA
+        function openDetail(item) {
+            document.getElementById('d-title').innerText = item.ad;
+            document.getElementById('d-kaynak').innerText = item.kaynak;
+            document.getElementById('d-tur').innerText = item.tur; 
+            document.getElementById('d-mekanizma').innerText = item.mekanizma; 
+            
+            document.getElementById('d-badge').innerText = item.kalitim;
+            document.getElementById('d-badge').className = `badge badge-${item.kod.toLowerCase()}`;
+            document.getElementById('d-detay').innerText = item.detay;
+            document.getElementById('d-gen').innerText = item.gen;
+            document.getElementById('d-gen-visual').innerText = item.gen;
+            document.getElementById('d-mutasyon').innerText = item.mutasyon;
+            document.getElementById('d-lokasyon').innerText = item.lokasyon;
+
+            navigate('detail');
+        }
+
+        // ARAMA VE FİLTRELEME
+        function filterData() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const kalitim = document.getElementById('kalitimFilter').value;
+            const tur = document.getElementById('turFilter').value; 
+            
+            const filtered = database.filter(item => {
+                return (item.ad.toLowerCase().includes(term) || item.gen.toLowerCase().includes(term)) &&
+                       (kalitim === "" || item.kod === kalitim) &&
+                       (tur === "" || item.tur === tur);
+            });
+            renderTable(filtered);
+        }
+
+        // SISTEMİ BAŞLAT
+        renderDictionary();
+        renderTable(database);
+    </script>
+</body>
+</html>
